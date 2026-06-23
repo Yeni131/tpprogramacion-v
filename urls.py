@@ -1,8 +1,14 @@
 from django.urls import path
-from .views import CouponApplyView, CouponRemoveView, CouponListView
+from apps.orders.api.views import (
+    CheckoutAPIView,
+    OrderDetailAPIView,
+    OrderListAPIView,
+    InvoiceDownloadAPIView,
+)
 
 urlpatterns = [
-    path('active/', CouponListView.as_view(),   name='coupon-list'),
-    path('apply/',  CouponApplyView.as_view(),  name='coupon-apply'),
-    path('remove/', CouponRemoveView.as_view(), name='coupon-remove'),
+    path('checkout/',        CheckoutAPIView.as_view(),       name='api-checkout'),
+    path('',          OrderListAPIView.as_view(), name='api-order-list'),
+    path('<int:pk>/',        OrderDetailAPIView.as_view(),    name='api-order-detail'),
+    path('<int:pk>/invoice/', InvoiceDownloadAPIView.as_view(), name='api-order-invoice'),
 ]
