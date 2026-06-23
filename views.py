@@ -1,139 +1,103 @@
-from django.contrib.auth import authenticate, login, logout, get_user_model
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
+from rest_framework import generics, filters
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAdminUser
+from django_filters.rest_framework import DjangoFilterBackend
+from apps.products.models import Category, Product, ProductVariant
 from .serializers import (
-    RegisterSerializer, UserMeSerializer,
-    UserUpdateSerializer, ChangePasswordSerializer,
+    CategorySerializer,
+    ProductSerializer,
+    ProductListSerializer,
+    ProductVariantSerializer,
 )
-from django.contrib.auth import update_session_auth_hash
-
-User = get_user_model()
 
 
-class RegisterView(APIView):
+class ProductListView(generics.ListCreateAPIView):
     """
-    POST /api/users/register/
-    Crea usuario con nombre, apellido, email y contraseña.
-    Sin confirmación por email. Sin OAuth.
+    GET  /api/products/       → lista paginada con filtros y búsqueda
+    POST /api/products/       → crear producto (solo admin)
     """
-    permission_classes = [AllowAny]
+    queryset = (
+        Product.objects
+        .filter(available=True)
+        .select_related('category')
+        .prefetch_related('variants', 'reviews')
+    )
+    filter_backends  = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['category__slug', 'available']
+    search_fields    = ['name', 'description']
+    ordering_fields  = ['price', 'created']
 
-    def post(self, request):
-        serializer = RegisterSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(
-                {'success': False, 'errors': serializer.errors},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        user = serializer.save()
-        # Loguear automáticamente después del registro
-        login(request, user)
-        return Response(
-            {
-                'success': True,
-                'user': UserMeSerializer(user).data,
-                'message': 'Cuenta creada exitosamente.'
-            },
-            status=status.HTTP_201_CREATED
-        )
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return ProductSerializer
+        return ProductListSerializer
+    
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAdminUser()]
+        return [IsAuthenticatedOrReadOnly()]
 
 
-class LoginView(APIView):
+class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
-    POST /api/users/login/
-    Autenticación estándar Django con email + contraseña.
+    GET    /api/products/<pk>/   → detalle completo
+    PUT    /api/products/<pk>/   → actualizar (solo admin)
+    PATCH  /api/products/<pk>/   → actualizar parcial (solo admin)
+    DELETE /api/products/<pk>/   → eliminar (solo admin)
     """
-    permission_classes = [AllowAny]
+    queryset = (
+        Product.objects
+        .select_related('category')
+        .prefetch_related('variants', 'reviews')
+    )
+    serializer_class = ProductSerializer
 
-    def post(self, request):
-        email    = request.data.get('email', '').strip().lower()
-        password = request.data.get('password', '')
-
-        if not email or not password:
-            return Response(
-                {'success': False, 'errors': {'detail': 'Email y contraseña son requeridos.'}},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # AbstractUser usa username internamente; nuestro USERNAME_FIELD es email
-        user = authenticate(request, username=email, password=password)
-        if user is None:
-            return Response(
-                {'success': False, 'errors': {'detail': 'Credenciales incorrectas.'}},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-
-        login(request, user)
-        return Response(
-            {
-                'success': True,
-                'user': UserMeSerializer(user).data,
-            }
-        )
+    def get_permissions(self):
+        if self.request.method in ('PUT', 'PATCH', 'DELETE'):
+            return [IsAdminUser()]
+        return [IsAuthenticatedOrReadOnly()]
 
 
-class LogoutView(APIView):
-    """POST /api/users/logout/"""
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        logout(request)
-        return Response({'success': True})
-
-
-class MeView(APIView):
+class ProductVariantListView(generics.ListCreateAPIView):
     """
-    GET   /api/users/me/   → datos del usuario (checkout y "Mi Cuenta")
-    PATCH /api/users/me/   → actualizar nombre, apellido, teléfono, dirección
+    GET  /api/products/<pk>/variants/   → variantes del producto
+    POST /api/products/<pk>/variants/   → crear variante (solo admin)
     """
-    permission_classes = [IsAuthenticated]
+    serializer_class   = ProductVariantSerializer
+    permission_classes = [IsAdminUser]
 
-    def get(self, request):
-        return Response(
-            UserMeSerializer(request.user, context={'request': request}).data
-        )
+    def get_queryset(self):
+        return ProductVariant.objects.filter(product_id=self.kwargs['pk'])
 
-    def patch(self, request):
-        serializer = UserUpdateSerializer(
-            request.user, data=request.data, partial=True
-        )
-        if not serializer.is_valid():
-            return Response(
-                {'success': False, 'errors': serializer.errors},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        serializer.save()
-        return Response({
-            'success': True,
-            'user': UserMeSerializer(request.user, context={'request': request}).data,
-        })
+    def perform_create(self, serializer):
+        product = generics.get_object_or_404(Product, pk=self.kwargs['pk'])
+        serializer.save(product=product)
 
 
-class ChangePasswordView(APIView):
-    """POST /api/users/change-password/"""
-    permission_classes = [IsAuthenticated]
+class CategoryListView(generics.ListCreateAPIView):
+    """
+    GET  /api/products/categories/   → todas las categorías
+    POST /api/products/categories/   → crear (solo admin)
+    """
+    queryset           = Category.objects.all()
+    serializer_class   = CategorySerializer
 
-    def post(self, request):
-        serializer = ChangePasswordSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(
-                {'success': False, 'errors': serializer.errors},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAdminUser()]
+        return [IsAuthenticatedOrReadOnly()]
 
-        user = request.user
-        if not user.check_password(serializer.validated_data['current_password']):
-            return Response(
-                {'success': False, 'errors': {'current_password': 'Contraseña actual incorrecta.'}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
-        user.set_password(serializer.validated_data['new_password'])
-        user.save()
-        # Evita que la sesión actual se invalide al cambiar el hash de password
-        update_session_auth_hash(request, user)
+class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET    /api/products/categories/<pk>/
+    PUT    /api/products/categories/<pk>/
+    DELETE /api/products/categories/<pk>/
+    """
+    queryset           = Category.objects.all()
+    serializer_class   = CategorySerializer
 
-        return Response({'success': True, 'message': 'Contraseña actualizada correctamente.'})
+    def get_permissions(self):
+        if self.request.method in ('PUT', 'PATCH', 'DELETE'):
+            return [IsAdminUser()]
+        return [IsAuthenticatedOrReadOnly()]
