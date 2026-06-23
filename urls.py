@@ -1,7 +1,8 @@
 from django.urls import path
-from .views import ReviewListCreateView, ReviewDeleteView
+from .views import CouponApplyView, CouponRemoveView, CouponListView
 
 urlpatterns = [
-    path('<int:product_id>/',          ReviewListCreateView.as_view(), name='review-list-create'),
-    path('<int:product_id>/<int:pk>/', ReviewDeleteView.as_view(),     name='review-delete'),
+    path('active/', CouponListView.as_view(),   name='coupon-list'),
+    path('apply/',  CouponApplyView.as_view(),  name='coupon-apply'),
+    path('remove/', CouponRemoveView.as_view(), name='coupon-remove'),
 ]
