@@ -1,10 +1,21 @@
 from django.urls import path
-from .views import RegisterView, LoginView, LogoutView, MeView, ChangePasswordView
+from .views import (
+    ProductListView,
+    ProductDetailView,
+    CategoryListView,
+    CategoryDetailView,
+    ProductVariantListView,
+)
 
 urlpatterns = [
-    path('register/',        RegisterView.as_view(),        name='api-register'),
-    path('login/',           LoginView.as_view(),           name='api-login'),
-    path('logout/',          LogoutView.as_view(),          name='api-logout'),
-    path('me/',               MeView.as_view(),              name='api-me'),
-    path('change-password/', ChangePasswordView.as_view(),  name='api-change-password'),
+    # Productos
+    path('',          ProductListView.as_view(),   name='product-list'),
+    path('<int:pk>/', ProductDetailView.as_view(), name='product-detail'),
+
+    # Variantes anidadas al producto
+    path('<int:pk>/variants/', ProductVariantListView.as_view(), name='product-variants'),
+
+    # Categorías
+    path('categories/',          CategoryListView.as_view(),   name='category-list'),
+    path('categories/<int:pk>/', CategoryDetailView.as_view(), name='category-detail'),
 ]
