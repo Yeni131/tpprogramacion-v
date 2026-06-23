@@ -1,27 +1,41 @@
 from rest_framework import serializers
-from apps.reviews.models import Review
+from apps.cart.models import Cart, CartItem
+from apps.products.api.serializers import ProductListSerializer, ProductVariantSerializer
 
 
-class ReviewSerializer(serializers.ModelSerializer):
-    user_name = serializers.SerializerMethodField()
+class CartItemSerializer(serializers.ModelSerializer):
+    product    = ProductListSerializer(read_only=True)
+    variant    = ProductVariantSerializer(read_only=True)
+    product_id = serializers.IntegerField(write_only=True)
+    variant_id = serializers.IntegerField(write_only=True, required=False)
+    # BUG 8 FIX: float() convierte Decimal → evita NaN potencial en JS
+    subtotal   = serializers.SerializerMethodField()
 
     class Meta:
-        model  = Review
-        fields = ['id', 'user_name', 'rating', 'comment', 'created']
-        read_only_fields = ['user_name', 'created']
+        model  = CartItem
+        fields = [
+            'id', 'product', 'product_id',
+            'variant', 'variant_id',
+            'quantity', 'subtotal',
+        ]
 
-    def get_user_name(self, obj):
-        full_name = f'{obj.user.first_name} {obj.user.last_name}'.strip()
-        return full_name or obj.user.email
+    def get_subtotal(self, obj):
+        return float(obj.get_subtotal())
 
-    def validate_rating(self, value):
-        if not 1 <= value <= 5:
-            raise serializers.ValidationError('El rating debe ser entre 1 y 5.')
-        return value
 
-    def validate(self, data):
-        request = self.context['request']
-        product = self.context['product']
-        if Review.objects.filter(user=request.user, product=product).exists():
-            raise serializers.ValidationError('Ya dejaste una reseña para este producto.')
-        return data
+class CartSerializer(serializers.ModelSerializer):
+    items      = CartItemSerializer(many=True, read_only=True)
+    # BUG 8 FIX: float() en total también
+    total      = serializers.SerializerMethodField()
+    item_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = Cart
+        # BUG 9 FIX: 'created' eliminado — no lo usa el frontend
+        fields = ['id', 'items', 'total', 'item_count']
+
+    def get_total(self, obj):
+        return float(obj.get_total())
+
+    def get_item_count(self, obj):
+        return obj.get_item_count()
