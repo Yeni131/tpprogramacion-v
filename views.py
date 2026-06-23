@@ -1,103 +1,57 @@
-from rest_framework import generics, filters
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAdminUser
-from django_filters.rest_framework import DjangoFilterBackend
-from apps.products.models import Category, Product, ProductVariant
-from .serializers import (
-    CategorySerializer,
-    ProductSerializer,
-    ProductListSerializer,
-    ProductVariantSerializer,
-)
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
+from rest_framework.exceptions import NotFound
+from apps.reviews.models import Review
+from apps.products.models import Product
+from .serializers import ReviewSerializer
 
 
-class ProductListView(generics.ListCreateAPIView):
+class ReviewListCreateView(generics.ListCreateAPIView):
     """
-    GET  /api/products/       → lista paginada con filtros y búsqueda
-    POST /api/products/       → crear producto (solo admin)
+    GET  /api/reviews/<product_id>/  — ver reseñas del producto
+    POST /api/reviews/<product_id>/  — crear reseña (requiere login)
     """
-    queryset = (
-        Product.objects
-        .filter(available=True)
-        .select_related('category')
-        .prefetch_related('variants', 'reviews')
-    )
-    filter_backends  = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['category__slug', 'available']
-    search_fields    = ['name', 'description']
-    ordering_fields  = ['price', 'created']
+    serializer_class   = ReviewSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
-    def get_serializer_class(self):
-        if self.request.method == 'POST':
-            return ProductSerializer
-        return ProductListSerializer
-    
-
-    def get_permissions(self):
-        if self.request.method == 'POST':
-            return [IsAdminUser()]
-        return [IsAuthenticatedOrReadOnly()]
-
-
-class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    GET    /api/products/<pk>/   → detalle completo
-    PUT    /api/products/<pk>/   → actualizar (solo admin)
-    PATCH  /api/products/<pk>/   → actualizar parcial (solo admin)
-    DELETE /api/products/<pk>/   → eliminar (solo admin)
-    """
-    queryset = (
-        Product.objects
-        .select_related('category')
-        .prefetch_related('variants', 'reviews')
-    )
-    serializer_class = ProductSerializer
-
-    def get_permissions(self):
-        if self.request.method in ('PUT', 'PATCH', 'DELETE'):
-            return [IsAdminUser()]
-        return [IsAuthenticatedOrReadOnly()]
-
-
-class ProductVariantListView(generics.ListCreateAPIView):
-    """
-    GET  /api/products/<pk>/variants/   → variantes del producto
-    POST /api/products/<pk>/variants/   → crear variante (solo admin)
-    """
-    serializer_class   = ProductVariantSerializer
-    permission_classes = [IsAdminUser]
+    def get_product(self):
+        try:
+            return Product.objects.get(pk=self.kwargs['product_id'])
+        except Product.DoesNotExist:
+            raise NotFound('Producto no encontrado.')
 
     def get_queryset(self):
-        return ProductVariant.objects.filter(product_id=self.kwargs['pk'])
+        return Review.objects.filter(
+            product_id=self.kwargs['product_id']
+        ).select_related('user')
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['product'] = self.get_product()
+        return context
 
     def perform_create(self, serializer):
-        product = generics.get_object_or_404(Product, pk=self.kwargs['pk'])
-        serializer.save(product=product)
+        serializer.save(
+            user    = self.request.user,
+            product = self.get_product()
+        )
+
+    def list(self, request, *args, **kwargs):
+        product    = self.get_product()
+        queryset   = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'product'        : product.name,
+            'average_rating' : product.get_average_rating(),
+            'total_reviews'  : queryset.count(),
+            'reviews'        : serializer.data,
+        })
 
 
-class CategoryListView(generics.ListCreateAPIView):
-    """
-    GET  /api/products/categories/   → todas las categorías
-    POST /api/products/categories/   → crear (solo admin)
-    """
-    queryset           = Category.objects.all()
-    serializer_class   = CategorySerializer
+class ReviewDeleteView(generics.DestroyAPIView):
+    """DELETE /api/reviews/<product_id>/<pk>/ — borrar reseña propia"""
+    permission_classes = [IsAuthenticated]
 
-    def get_permissions(self):
-        if self.request.method == 'POST':
-            return [IsAdminUser()]
-        return [IsAuthenticatedOrReadOnly()]
-
-
-class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    GET    /api/products/categories/<pk>/
-    PUT    /api/products/categories/<pk>/
-    DELETE /api/products/categories/<pk>/
-    """
-    queryset           = Category.objects.all()
-    serializer_class   = CategorySerializer
-
-    def get_permissions(self):
-        if self.request.method in ('PUT', 'PATCH', 'DELETE'):
-            return [IsAdminUser()]
-        return [IsAuthenticatedOrReadOnly()]
+    def get_queryset(self):
+        return Review.objects.filter(user=self.request.user, product_id=self.kwargs['product_id'])
