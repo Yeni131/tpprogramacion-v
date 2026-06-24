@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Iniciar sesión — MYA{% endblock %}
+
+{% block content %}
+<div style="min-height:70vh;display:flex;align-items:center;justify-content:center;padding:2rem 1rem">
+  <div style="width:100%;max-width:420px">
+
+    <!-- Logo -->
+    <div style="text-align:center;margin-bottom:2rem">
+      <a href="{% url 'home' %}"
+         style="font-family:var(--font-display);font-size:1.8rem;letter-spacing:.2em;text-transform:uppercase;color:var(--clr-text);text-decoration:none">
+        MYA
+      </a>
+      <p style="margin-top:.5rem;font-size:.85rem;color:var(--clr-muted)">
+        Iniciá sesión para continuar
+      </p>
+    </div>
+
+    <!-- Card -->
+    <div style="background:var(--clr-surface);border:1px solid var(--clr-border);border-radius:var(--radius);padding:2rem">
+
+      <!-- Error global -->
+      <div id="loginError"
+           style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius);
+                  padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.85rem;color:#dc2626">
+      </div>
+
+      <div style="margin-bottom:1rem">
+        <label style="font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--clr-muted);display:block;margin-bottom:.4rem">
+          Correo electrónico
+        </label>
+        <input type="email" id="loginEmail" autocomplete="email"
+               style="width:100%;padding:.7rem .875rem;border:1px solid var(--clr-border);
+                      border-radius:var(--radius);font-size:.88rem;font-family:var(--font-body);
+                      background:var(--clr-bg);color:var(--clr-text);outline:none;box-sizing:border-box"
+               placeholder="correo@ejemplo.com" />
+      </div>
+
+      <div style="margin-bottom:1.5rem">
+        <label style="font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--clr-muted);display:block;margin-bottom:.4rem">
+          Contraseña
+        </label>
+        <input type="password" id="loginPassword" autocomplete="current-password"
+               style="width:100%;padding:.7rem .875rem;border:1px solid var(--clr-border);
+                      border-radius:var(--radius);font-size:.88rem;font-family:var(--font-body);
+                      background:var(--clr-bg);color:var(--clr-text);outline:none;box-sizing:border-box"
+               placeholder="••••••••" />
+      </div>
+
+      <button id="btnLogin" onclick="doLogin()"
+              style="width:100%;padding:1rem;background:var(--clr-text);color:#fff;border:none;
+                     border-radius:var(--radius);font-family:var(--font-body);font-size:.82rem;
+                     font-weight:500;letter-spacing:.14em;text-transform:uppercase;cursor:pointer">
+        Iniciar sesión
+      </button>
+
+    </div>
+
+    <!-- Link a registro -->
+    <p style="text-align:center;margin-top:1.25rem;font-size:.85rem;color:var(--clr-muted)">
+      ¿No tenés cuenta?
+      <a href="{% url 'register' %}" style="color:var(--clr-text);font-weight:500">Registrate</a>
+    </p>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/login.js' %}"></script>
+{% endblock %}
