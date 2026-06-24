@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Mis Pedidos — MYA{% endblock %}
+
+{% block extra_css %}
+<style>
+  .orders-page-header {
+    background: var(--clr-beige);
+    padding: 3rem 0 2rem;
+    border-bottom: 1px solid var(--clr-border);
+  }
+  .orders-page-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+    font-weight: 400;
+  }
+  .orders-page-subtitle {
+    font-size: .85rem;
+    color: var(--clr-muted);
+    margin-top: .35rem;
+  }
+
+  .orders-list {
+    padding: 2.5rem 0 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .order-card {
+    background: var(--clr-surface);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .order-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .75rem;
+    padding: 1rem 1.25rem;
+    background: var(--clr-bg);
+    border-bottom: 1px solid var(--clr-border);
+  }
+
+  .order-id { font-weight: 600; font-size: .9rem; }
+  .order-date { font-size: .8rem; color: var(--clr-muted); }
+
+  .order-status {
+    font-size: .7rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: .3rem .7rem;
+    border-radius: 99px;
+    font-weight: 600;
+  }
+  .status-pending   { background: #fef3c7; color: #92400e; }
+  .status-paid      { background: #dbeafe; color: #1e40af; }
+  .status-shipped   { background: #e0e7ff; color: #3730a3; }
+  .status-delivered { background: #dcfce7; color: #166534; }
+  .status-cancelled { background: #fee2e2; color: #991b1b; }
+
+  .order-items { padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: .75rem; }
+
+  .order-item-row {
+    display: flex;
+    align-items: center;
+    gap: .875rem;
+  }
+  .order-item-img {
+    width: 52px; height: 52px;
+    border-radius: var(--radius);
+    background: var(--clr-beige);
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  .order-item-img-placeholder {
+    width: 52px; height: 52px;
+    border-radius: var(--radius);
+    background: var(--clr-beige);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    color: var(--clr-muted);
+  }
+  .order-item-info { flex: 1; min-width: 0; }
+  .order-item-name { font-size: .85rem; font-weight: 500; }
+  .order-item-variant { font-size: .75rem; color: var(--clr-muted); }
+  .order-item-qty { font-size: .78rem; color: var(--clr-muted); white-space: nowrap; }
+  .order-item-subtotal { font-size: .85rem; font-weight: 500; white-space: nowrap; }
+
+  .order-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .9rem 1.25rem;
+    border-top: 1px solid var(--clr-border);
+    background: var(--clr-bg);
+  }
+  .order-total-label { font-size: .78rem; color: var(--clr-muted); }
+  .order-total-amount { font-family: var(--font-display); font-size: 1.2rem; font-weight: 500; }
+
+  .orders-empty {
+    text-align: center;
+    padding: 4rem 1rem;
+    color: var(--clr-muted);
+  }
+  .orders-empty i { font-size: 2.5rem; opacity: .35; display: block; margin-bottom: 1rem; }
+
+  .orders-loading {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--clr-muted);
+    font-size: .85rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="orders-page-header">
+  <div class="container-xl px-3 px-md-4">
+    <h1 class="orders-page-title">Mis Pedidos</h1>
+    <p class="orders-page-subtitle" id="ordersSubtitle">Cargando tu historial de compras…</p>
+  </div>
+</div>
+
+<div class="container-xl px-3 px-md-4">
+  <div class="orders-list" id="ordersList">
+    <div class="orders-loading">Cargando pedidos…</div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/my-orders.js' %}"></script>
+{% endblock %}
