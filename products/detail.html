@@ -1,0 +1,431 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ product.name }} — MYA{% endblock %}
+
+{% block extra_css %}
+<style>
+  {# ... todos los estilos del detalle de producto permanecen aquí (son estilos específicos de esta página) ... #}
+  .breadcrumb-bar {
+    background: var(--clr-beige);
+    border-bottom: 1px solid var(--clr-border);
+    padding: .75rem 0;
+  }
+  .breadcrumb-inner { display: flex; align-items: center; gap: .5rem; font-size: .75rem; color: var(--clr-muted); }
+  .breadcrumb-inner a { color: var(--clr-muted); text-decoration: none; transition: color var(--transition); }
+  .breadcrumb-inner a:hover { color: var(--clr-text); }
+  .breadcrumb-inner span.sep { opacity: .4; }
+  .breadcrumb-inner span.current { color: var(--clr-text); }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; padding: 3rem 0 5rem; align-items: start; }
+  @media (max-width: 860px) { .detail-grid { grid-template-columns: 1fr; gap: 2rem; } }
+  .gallery-main { aspect-ratio: 4/5; border-radius: var(--radius); overflow: hidden; background: var(--clr-beige); position: relative; }
+  .gallery-main img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s cubic-bezier(.4,0,.2,1); }
+  .gallery-main:hover img { transform: scale(1.03); }
+  .gallery-main-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--clr-muted); font-size: 3rem; }
+  .gallery-thumbs { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; }
+  .gallery-thumb { width: 68px; height: 68px; border-radius: var(--radius); overflow: hidden; background: var(--clr-beige); cursor: pointer; border: 2px solid transparent; transition: border-color var(--transition); flex-shrink: 0; }
+  .gallery-thumb.active { border-color: var(--clr-text); }
+  .gallery-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .product-info { position: sticky; top: 80px; }
+  .prod-category { font-size: .7rem; letter-spacing: .18em; text-transform: uppercase; color: var(--clr-muted); margin-bottom: .5rem; }
+  .prod-title { font-family: var(--font-display); font-size: clamp(1.8rem, 3vw, 2.4rem); font-weight: 400; line-height: 1.1; margin-bottom: 1rem; }
+  .prod-price-row { display: flex; align-items: baseline; gap: .75rem; margin-bottom: 1.5rem; }
+  .prod-price { font-family: var(--font-display); font-size: 2rem; font-weight: 500; }
+  .prod-original { font-size: 1rem; color: var(--clr-muted); text-decoration: line-through; font-family: var(--font-body); }
+  .prod-badge-sale { background: #c0392b; color: #fff; font-size: .65rem; letter-spacing: .08em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 2px; }
+  .prod-description { font-size: .9rem; color: var(--clr-muted); line-height: 1.75; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--clr-border); }
+  .variant-section { margin-bottom: 1.75rem; }
+  .variant-label { font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--clr-text); margin-bottom: .75rem; display: flex; align-items: center; gap: .5rem; }
+  .variant-required { color: #c0392b; font-size: .7rem; font-weight: 500; }
+  .variant-selected-name { color: var(--clr-muted); font-size: .78rem; font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .size-grid { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .size-btn { min-width: 52px; padding: .55rem .75rem; border: 1px solid var(--clr-border); border-radius: var(--radius); background: var(--clr-bg); color: var(--clr-text); font-size: .82rem; font-family: var(--font-body); font-weight: 500; cursor: pointer; transition: border-color var(--transition), background var(--transition), color var(--transition); text-align: center; }
+  .size-btn:hover { border-color: var(--clr-text); background: var(--clr-hover); }
+  .size-btn.selected { border-color: var(--clr-text); background: var(--clr-text); color: #fff; }
+  .size-btn.unavailable { opacity: .35; cursor: not-allowed; text-decoration: line-through; }
+  .variant-chips { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .variant-chip { padding: .45rem 1rem; border: 1px solid var(--clr-border); border-radius: 99px; background: var(--clr-bg); color: var(--clr-text); font-size: .8rem; cursor: pointer; transition: all var(--transition); }
+  .variant-chip:hover { border-color: var(--clr-text); background: var(--clr-hover); }
+  .variant-chip.selected { border-color: var(--clr-text); background: var(--clr-text); color: #fff; }
+  .variant-error { display: none; color: #c0392b; font-size: .78rem; margin-top: .5rem; align-items: center; gap: .3rem; }
+  .variant-error.show { display: flex; }
+  .size-grid.error-highlight .size-btn:not(.selected), .variant-chips.error-highlight .variant-chip:not(.selected) { border-color: #e8a0a0; animation: shake .3s ease; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+  .qty-section { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.5rem; }
+  .qty-label { font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; }
+  .qty-control { display: flex; align-items: center; border: 1px solid var(--clr-border); border-radius: var(--radius); overflow: hidden; }
+  .qty-control button { width: 36px; height: 38px; background: var(--clr-bg); border: none; cursor: pointer; font-size: 1rem; color: var(--clr-text); transition: background var(--transition); display: flex; align-items: center; justify-content: center; }
+  .qty-control button:hover { background: var(--clr-hover); }
+  .qty-control input { width: 48px; text-align: center; border: none; border-left: 1px solid var(--clr-border); border-right: 1px solid var(--clr-border); font-size: .9rem; font-family: var(--font-body); background: #fff; color: var(--clr-text); height: 38px; outline: none; -moz-appearance: textfield; }
+  .qty-control input::-webkit-outer-spin-button, .qty-control input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .btn-add-cart { width: 100%; padding: 1.05rem 1.5rem; background: var(--clr-text); color: #fff; border: none; border-radius: var(--radius); font-family: var(--font-body); font-size: .82rem; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; cursor: pointer; transition: opacity var(--transition), transform var(--transition); display: flex; align-items: center; justify-content: center; gap: .6rem; margin-bottom: .75rem; }
+  .btn-add-cart:hover { opacity: .84; transform: translateY(-1px); }
+  .btn-add-cart:active { transform: translateY(0); }
+  .btn-add-cart.loading { opacity: .6; pointer-events: none; }
+  .btn-wishlist { width: 100%; padding: .875rem 1.5rem; background: transparent; color: var(--clr-text); border: 1px solid var(--clr-border); border-radius: var(--radius); font-size: .82rem; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; transition: border-color var(--transition), background var(--transition); display: flex; align-items: center; justify-content: center; gap: .6rem; }
+  .btn-wishlist:hover { border-color: var(--clr-text); background: var(--clr-hover); }
+  .details-accordion { margin-top: 2rem; border-top: 1px solid var(--clr-border); }
+  .acc-item { border-bottom: 1px solid var(--clr-border); }
+  .acc-toggle { width: 100%; background: none; border: none; padding: 1rem 0; display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-size: .8rem; font-family: var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--clr-text); }
+  .acc-toggle i { transition: transform var(--transition); }
+  .acc-toggle.open i { transform: rotate(45deg); }
+  .acc-body { max-height: 0; overflow: hidden; transition: max-height .3s ease; font-size: .88rem; color: var(--clr-muted); line-height: 1.7; }
+  .acc-body.open { max-height: 400px; }
+  .acc-body-inner { padding-bottom: 1rem; }
+  /* ── REVIEWS SECTION ──────────────────────────── */
+  .reviews-section {
+    grid-column: 1 / -1;
+    margin-top: 3rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid var(--clr-border);
+  }
+
+  .reviews-summary {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  .reviews-summary-score { display: flex; align-items: center; gap: .75rem; }
+  .reviews-avg {
+    font-family: var(--font-display);
+    font-size: 2.4rem;
+    font-weight: 500;
+  }
+  .reviews-stars-display { color: #f5a623; font-size: 1.1rem; letter-spacing: .1em; }
+  .reviews-stars-display .bi-star { color: var(--clr-border); }
+  .reviews-count { font-size: .82rem; color: var(--clr-muted); }
+
+  .review-form-card {
+    background: var(--clr-bg);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    max-width: 520px;
+  }
+  .review-form-title {
+    font-size: .85rem;
+    font-weight: 600;
+    margin-bottom: .9rem;
+  }
+  .star-input {
+    font-size: 1.6rem;
+    color: var(--clr-border);
+    margin-bottom: 1rem;
+    display: flex;
+    gap: .3rem;
+  }
+  .star-input i { cursor: pointer; transition: color var(--transition); }
+  .star-input i.filled { color: #f5a623; }
+
+  .review-form-card textarea {
+    width: 100%;
+    padding: .7rem .9rem;
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius);
+    font-size: .85rem;
+    font-family: var(--font-body);
+    background: var(--clr-surface);
+    color: var(--clr-text);
+    outline: none;
+    resize: vertical;
+    box-sizing: border-box;
+    margin-bottom: 1rem;
+    transition: border-color var(--transition);
+  }
+  .review-form-card textarea:focus { border-color: var(--clr-text); }
+
+  .btn-submit-review {
+    padding: .65rem 1.5rem;
+    background: var(--clr-text);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-size: .75rem;
+    font-weight: 500;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity var(--transition);
+  }
+  .btn-submit-review:hover { opacity: .85; }
+  .btn-submit-review:disabled { opacity: .5; cursor: not-allowed; }
+
+  .review-form-msg {
+    font-size: .8rem;
+    margin-top: .75rem;
+    padding: .55rem .8rem;
+    border-radius: var(--radius);
+    display: none;
+  }
+  .review-form-msg.show { display: block; }
+  .review-form-msg.success { background: #dcfce7; color: #166534; }
+  .review-form-msg.error   { background: #fee2e2; color: #991b1b; }
+
+  .review-login-prompt {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    background: var(--clr-bg);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
+    font-size: .85rem;
+    color: var(--clr-muted);
+    max-width: 520px;
+  }
+  .review-login-prompt a {
+    color: var(--clr-text);
+    font-weight: 600;
+    text-decoration: underline;
+    margin-left: auto;
+  }
+
+  .reviews-list { display: flex; flex-direction: column; gap: 1.5rem; max-width: 720px; }
+  .reviews-loading, .reviews-empty {
+    color: var(--clr-muted);
+    font-size: .85rem;
+    padding: 1rem 0;
+  }
+
+  .review-item { padding-bottom: 1.5rem; border-bottom: 1px solid var(--clr-border); }
+  .review-item:last-child { border-bottom: none; }
+  .review-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: .4rem;
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+  .review-author { font-size: .85rem; font-weight: 600; }
+  .review-stars { color: #f5a623; font-size: .85rem; }
+  .review-stars .bi-star { color: var(--clr-border); }
+  .review-date { font-size: .75rem; color: var(--clr-muted); }
+  .review-comment { font-size: .85rem; color: var(--clr-text); line-height: 1.6; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- BREADCRUMB -->
+<div class="breadcrumb-bar">
+  <div class="container-xl px-3 px-md-4">
+    <div class="breadcrumb-inner">
+      <a href="{% url 'home' %}">Inicio</a>
+      <span class="sep">/</span>
+      <a href="{% url 'product_list' %}">Productos</a>
+      <span class="sep">/</span>
+      {% if product.category %}
+      <a href="{% url 'product_list' %}?category={{ product.category.slug }}">{{ product.category.name }}</a>
+      <span class="sep">/</span>
+      {% endif %}
+      <span class="current">{{ product.name }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL -->
+<div class="container-xl px-3 px-md-4">
+  <div class="detail-grid">
+
+    <!-- GALLERY -->
+    <div class="gallery-col">
+      <div class="gallery-main" id="galleryMain">
+        {% if product.image %}
+          <img src="{{ product.image.url }}" alt="{{ product.name }}" id="mainImage" />
+        {% else %}
+          <div class="gallery-main-placeholder"><i class="bi bi-image"></i></div>
+        {% endif %}
+      </div>
+
+      {% if product.images.count > 1 %}
+      <div class="gallery-thumbs" id="galleryThumbs">
+        {% for img in product.images.all %}
+        <div class="gallery-thumb {% if forloop.first %}active{% endif %}"
+             onclick="switchImage('{{ img.url }}', this)">
+          <img src="{{ img.url }}" alt="{{ product.name }} {{ forloop.counter }}" loading="lazy" />
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- PRODUCT INFO -->
+    <div class="product-info">
+      <p class="prod-category">{{ product.category.name }}</p>
+      <h1 class="prod-title">{{ product.name }}</h1>
+
+      <div class="prod-price-row">
+        <span class="prod-price">${{ product.price }}</span>
+        {% if product.original_price %}
+          <span class="prod-original">${{ product.original_price }}</span>
+          <span class="prod-badge-sale">Oferta</span>
+        {% endif %}
+      </div>
+
+      {% if product.description %}
+      <p class="prod-description">{{ product.description }}</p>
+      {% endif %}
+
+      {% if product.category.name|lower == 'ropa' %}
+      <div class="variant-section" id="sizeSection">
+        <div class="variant-label">
+          Talle
+          <span class="variant-required">*obligatorio</span>
+          <span class="variant-selected-name" id="selectedSizeName"></span>
+        </div>
+        <div class="size-grid" id="sizeGrid">
+          {% for size in sizes %}
+          <button class="size-btn"
+                  data-size="{{ size }}"
+                  onclick="selectSize(this)">{{ size }}</button>
+          {% empty %}
+          <button class="size-btn" data-size="P"   onclick="selectSize(this)">P</button>
+          <button class="size-btn" data-size="M"   onclick="selectSize(this)">M</button>
+          <button class="size-btn" data-size="G"   onclick="selectSize(this)">G</button>
+          <button class="size-btn" data-size="XL"  onclick="selectSize(this)">XL</button>
+          <button class="size-btn" data-size="XXL" onclick="selectSize(this)">XXL</button>
+          {% endfor %}
+        </div>
+        <div class="variant-error" id="sizeError">
+          <i class="bi bi-exclamation-circle"></i>
+          Seleccioná un talle para continuar
+        </div>
+      </div>
+
+      {% elif product.variants.exists %}
+      <div class="variant-section" id="variantSection">
+        <div class="variant-label">
+          {{ product.variant_label|default:"Variante" }}
+          <span class="variant-required">*obligatorio</span>
+          <span class="variant-selected-name" id="selectedVariantName"></span>
+        </div>
+        <div class="variant-chips" id="variantChips">
+          {% for variant in product.variants.all %}
+          <div class="variant-chip"
+               data-variant-id="{{ variant.id }}"
+               data-variant-name="{{ variant.name }}"
+               onclick="selectVariant(this)">{{ variant.name }}</div>
+          {% endfor %}
+        </div>
+        <div class="variant-error" id="variantError">
+          <i class="bi bi-exclamation-circle"></i>
+          Seleccioná una opción para continuar
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- QUANTITY -->
+      <div class="qty-section">
+        <span class="qty-label">Cantidad</span>
+        <div class="qty-control">
+          <button onclick="changeQty(-1)" aria-label="Disminuir">−</button>
+          <input type="number" id="qtyInput" value="1" min="1" max="{{ product.stock|default:99 }}" readonly />
+          <button onclick="changeQty(1)" aria-label="Aumentar">+</button>
+        </div>
+        {% if product.stock %}
+        <span style="font-size:.75rem;color:var(--clr-muted)">{{ product.stock }} disponibles</span>
+        {% endif %}
+      </div>
+
+      <!-- ADD TO CART -->
+      <button class="btn-add-cart" id="addToCartBtn" onclick="handleAddToCart()">
+        <i class="bi bi-bag-plus"></i>
+        Agregar al carrito
+      </button>
+      <button class="btn-wishlist" onclick="Cart.showToast('Guardado en favoritos')">
+        <i class="bi bi-heart"></i>
+        Guardar en favoritos
+      </button>
+
+      <!-- ACCORDION DETAILS -->
+      <div class="details-accordion">
+        {% if product.details %}
+        <div class="acc-item">
+          <button class="acc-toggle" onclick="toggleAcc(this)">
+            Detalles del producto <i class="bi bi-plus"></i>
+          </button>
+          <div class="acc-body"><div class="acc-body-inner">{{ product.details }}</div></div>
+        </div>
+        {% endif %}
+        <div class="acc-item">
+          <button class="acc-toggle" onclick="toggleAcc(this)">
+            Envío y devoluciones <i class="bi bi-plus"></i>
+          </button>
+          <div class="acc-body"><div class="acc-body-inner">
+            Envíos a todo el país. Entrega en 3-5 días hábiles.<br>
+            Cambios y devoluciones dentro de los 30 días de recibido.
+          </div></div>
+        </div>
+        <div class="acc-item">
+          <button class="acc-toggle" onclick="toggleAcc(this)">
+            Medios de pago <i class="bi bi-plus"></i>
+          </button>
+          <div class="acc-body"><div class="acc-body-inner">
+            Aceptamos todas las tarjetas. Hasta 12 cuotas sin interés.<br>
+            Transferencia bancaria con 5% de descuento adicional.
+          </div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       RESEÑAS DEL PRODUCTO
+  ═══════════════════════════════════════════════ -->
+  <div class="reviews-section" id="reviewsSection">
+
+    <div class="reviews-summary">
+      <div class="reviews-summary-score">
+        <span class="reviews-avg" id="reviewsAvg">—</span>
+        <div class="reviews-stars-display" id="reviewsAvgStars"></div>
+        <span class="reviews-count" id="reviewsCount">0 reseñas</span>
+      </div>
+    </div>
+
+    <!-- Formulario para nueva reseña (solo usuarios logueados) -->
+    <div class="review-form-card" id="reviewFormCard" style="display:none;">
+      <div class="review-form-title">Dejá tu reseña</div>
+      <div class="star-input" id="starInput">
+        <i class="bi bi-star" data-value="1"></i>
+        <i class="bi bi-star" data-value="2"></i>
+        <i class="bi bi-star" data-value="3"></i>
+        <i class="bi bi-star" data-value="4"></i>
+        <i class="bi bi-star" data-value="5"></i>
+      </div>
+      <textarea id="reviewComment" rows="3" placeholder="Contanos qué te pareció el producto..."></textarea>
+      <button class="btn-submit-review" id="btnSubmitReview">Publicar reseña</button>
+      <div class="review-form-msg" id="reviewFormMsg"></div>
+    </div>
+
+    <!-- Mensaje si no está logueado -->
+    <div class="review-login-prompt" id="reviewLoginPrompt" style="display:none;">
+      <i class="bi bi-lock"></i>
+      <span>Iniciá sesión para dejar tu reseña.</span>
+      <a href="{% url 'login' %}">Iniciar sesión</a>
+    </div>
+
+    <!-- Lista de reseñas -->
+    <div class="reviews-list" id="reviewsList">
+      <div class="reviews-loading">Cargando reseñas...</div>
+    </div>
+
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+{# Expone datos del producto al JS — única excepción permitida para variables Django #}
+<script>
+  window.PRODUCT_ID   = {{ product.id }};
+  window.IS_CLOTHING  = {% if product.category.name|lower == 'ropa' %}true{% else %}false{% endif %};
+  window.HAS_VARIANTS = {% if product.variants.exists %}true{% else %}false{% endif %};
+</script>
+<script src="{% static 'js/product-detail.js' %}"></script>
+<script src="{% static 'js/reviews.js' %}"></script>
+{% endblock %}

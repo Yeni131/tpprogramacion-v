@@ -1,0 +1,412 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Productos — MYA{% endblock %}
+
+{% block extra_css %}
+<style>
+  .page-header { background: var(--clr-beige); padding: 3.5rem 0 2.5rem; border-bottom: 1px solid var(--clr-border); }
+  .page-header-label { font-size: .7rem; letter-spacing: .2em; text-transform: uppercase; color: var(--clr-muted); margin-bottom: .4rem; }
+  .page-header-title { font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3rem); font-weight: 400; line-height: 1.1; }
+  .page-header-count { font-size: .82rem; color: var(--clr-muted); margin-top: .4rem; }
+
+  .products-layout { padding: 2.5rem 0 4rem; }
+
+  /* ═══════════════════════════════════════════════
+     FILTROS — barra desplegable (acordeón), separada
+     visualmente del grid mediante su propia tarjeta
+     con borde, fondo y sombra.
+  ═══════════════════════════════════════════════ */
+  .filters-bar {
+    background: var(--clr-surface);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius);
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  .filters-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .9rem 1.25rem;
+    background: var(--clr-surface);
+    border: none;
+    cursor: pointer;
+    font-size: .85rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    color: var(--clr-text);
+    transition: background var(--transition);
+  }
+  .filters-toggle:hover { background: var(--clr-hover); }
+  .filters-toggle .chevron {
+    transition: transform var(--transition);
+    color: var(--clr-muted);
+  }
+  .filters-toggle.open .chevron { transform: rotate(180deg); }
+
+  .filters-toggle .active-count {
+    background: var(--clr-text);
+    color: #fff;
+    font-size: .68rem;
+    font-weight: 600;
+    border-radius: 99px;
+    padding: .1rem .55rem;
+    margin-left: .5rem;
+    display: none;
+  }
+  .filters-toggle .active-count.show { display: inline-block; }
+
+  .filters-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .3s ease;
+    border-top: 1px solid transparent;
+  }
+  .filters-body.open {
+    max-height: 800px;
+    border-top: 1px solid var(--clr-border);
+  }
+
+  .filters-body-inner {
+    padding: 1.25rem 1.25rem 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
+  @media (max-width: 768px) {
+    .filters-body-inner { grid-template-columns: 1fr; gap: 1.25rem; }
+  }
+
+  .filter-section-title {
+    font-size: .7rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--clr-muted);
+    margin-bottom: .75rem;
+    padding-bottom: .5rem;
+    border-bottom: 1px solid var(--clr-border);
+  }
+  .filter-option { display: flex; align-items: center; gap: .6rem; padding: .3rem 0; cursor: pointer; user-select: none; }
+  .filter-option input[type="checkbox"] { width: 15px; height: 15px; border: 1px solid var(--clr-border); border-radius: 3px; accent-color: var(--clr-text); cursor: pointer; }
+  .filter-option label { font-size: .85rem; display: flex; justify-content: space-between; width: 100%; color: var(--clr-text); cursor: pointer; }
+  .filter-count { color: var(--clr-muted); font-size: .78rem; }
+
+  .price-range-inputs { display: flex; gap: .5rem; align-items: center; margin-top: .25rem; }
+  .price-range-inputs input {
+    flex: 1; padding: .45rem .65rem; border: 1px solid var(--clr-border); border-radius: var(--radius);
+    font-size: .82rem; font-family: var(--font-body); background: var(--clr-bg); color: var(--clr-text);
+    outline: none; transition: border-color var(--transition);
+  }
+  .price-range-inputs input:focus { border-color: var(--clr-text); }
+  .price-range-sep { color: var(--clr-muted); font-size: .8rem; }
+
+  .filters-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: .75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--clr-border);
+    margin-top: .5rem;
+  }
+  .btn-filter-apply {
+    padding: .65rem 1.5rem;
+    background: var(--clr-text);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-size: .75rem;
+    font-weight: 500;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity var(--transition);
+  }
+  .btn-filter-apply:hover { opacity: .82; }
+  .btn-filter-reset {
+    padding: .65rem 1.5rem;
+    background: transparent;
+    color: var(--clr-muted);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius);
+    font-size: .75rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color var(--transition), border-color var(--transition);
+  }
+  .btn-filter-reset:hover { color: var(--clr-text); border-color: var(--clr-text); }
+
+  /* ── TOOLBAR (orden + vista) ─────────────────────── */
+  .products-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: .75rem;
+  }
+  .sort-select {
+    padding: .5rem .875rem; border: 1px solid var(--clr-border); border-radius: var(--radius);
+    font-size: .8rem; font-family: var(--font-body); background: var(--clr-bg); color: var(--clr-text);
+    cursor: pointer; outline: none; transition: border-color var(--transition);
+  }
+  .sort-select:focus { border-color: var(--clr-text); }
+
+  .view-toggle { display: flex; gap: .25rem; }
+  .view-toggle button {
+    width: 34px; height: 34px; border: 1px solid var(--clr-border); border-radius: var(--radius);
+    background: var(--clr-bg); color: var(--clr-muted); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background var(--transition), color var(--transition);
+  }
+  .view-toggle button.active { background: var(--clr-text); color: #fff; border-color: var(--clr-text); }
+
+  /* ── PRODUCT GRID ─────────────────────────────── */
+  #productsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.25rem;
+    transition: opacity .2s;
+  }
+  #productsGrid.list-view { grid-template-columns: 1fr; }
+  #productsGrid.loading { opacity: .4; pointer-events: none; }
+
+  .product-card {
+    background: var(--clr-surface); border-radius: var(--radius); overflow: hidden;
+    box-shadow: var(--shadow-sm); transition: box-shadow var(--transition), transform var(--transition);
+    animation: fadeInUp .25s ease both;
+  }
+  .product-card:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); }
+
+  .product-card-img { aspect-ratio: 3/4; overflow: hidden; background: var(--clr-beige); position: relative; }
+  #productsGrid.list-view .product-card { display: flex; }
+  #productsGrid.list-view .product-card-img { aspect-ratio: 1/1; width: 140px; flex-shrink: 0; }
+
+  .product-card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s cubic-bezier(.4,0,.2,1); }
+  .product-card:hover .product-card-img img { transform: scale(1.04); }
+
+  .product-card-badge {
+    position: absolute; top: .6rem; left: .6rem; background: var(--clr-text); color: #fff;
+    font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 2px;
+  }
+  .badge-sale { background: #c0392b; }
+
+  .product-card-body { padding: .875rem 1rem; flex: 1; }
+  .product-card-category { font-size: .65rem; letter-spacing: .1em; text-transform: uppercase; color: var(--clr-muted); margin-bottom: .25rem; }
+  .product-card-name { font-size: .88rem; font-weight: 500; margin-bottom: .5rem; }
+  .product-card-price { font-family: var(--font-display); font-size: 1.05rem; font-weight: 500; }
+  .product-card-price .original { font-size: .8rem; color: var(--clr-muted); text-decoration: line-through; margin-right: .35rem; font-family: var(--font-body); }
+
+  .product-card-actions { padding: 0 1rem .875rem; display: flex; gap: .5rem; }
+  #productsGrid.list-view .product-card-actions { flex-direction: column; padding-top: .875rem; }
+
+  .btn-card-detail {
+    flex: 1; padding: .5rem; background: var(--clr-bg); border: 1px solid var(--clr-border); border-radius: var(--radius);
+    font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; color: var(--clr-text);
+    text-align: center; transition: background var(--transition);
+  }
+  .btn-card-detail:hover { background: var(--clr-hover); color: var(--clr-text); }
+  .btn-card-add {
+    flex: 1; padding: .5rem; background: var(--clr-text); border: none; border-radius: var(--radius);
+    font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: #fff; cursor: pointer;
+    transition: opacity var(--transition);
+  }
+  .btn-card-add:hover { opacity: .8; }
+
+  /* ── PAGINATION ───────────────────────────────── */
+  .pagination-wrap { display: flex; justify-content: center; gap: .4rem; margin-top: 3rem; }
+  .page-btn {
+    min-width: 36px; height: 36px; padding: 0 .5rem; border: 1px solid var(--clr-border); border-radius: var(--radius);
+    background: var(--clr-bg); color: var(--clr-text); font-size: .82rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: background var(--transition);
+  }
+  .page-btn.active { background: var(--clr-text); color: #fff; border-color: var(--clr-text); }
+  .page-btn:hover:not(.active) { background: var(--clr-hover); }
+
+  /* ── NO RESULTS ────────────────────────────────── */
+  .no-results { text-align: center; padding: 4rem 1rem; color: var(--clr-muted); grid-column: 1/-1; }
+  .no-results i { font-size: 2.5rem; opacity: .35; display: block; margin-bottom: 1rem; }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div class="container-xl px-3 px-md-4">
+    <p class="page-header-label">Catálogo</p>
+    <h1 class="page-header-title">
+      {% if current_category %}{{ current_category.name }}{% else %}Todos los productos{% endif %}
+    </h1>
+    <p class="page-header-count" id="productCount">
+      {% if page_obj %}{{ page_obj.paginator.count }} productos{% endif %}
+    </p>
+  </div>
+</div>
+
+<div class="container-xl px-3 px-md-4">
+  <div class="products-layout">
+
+    <!-- BARRA DE FILTROS DESPLEGABLE -->
+    <div class="filters-bar">
+      <button type="button" class="filters-toggle" id="filtersToggle">
+        <span>
+          <i class="bi bi-sliders"></i>
+          Filtros
+          <span class="active-count" id="activeCount">0</span>
+        </span>
+        <i class="bi bi-chevron-down chevron"></i>
+      </button>
+
+      <div class="filters-body" id="filtersBody">
+        <form id="filtersForm">
+          <div class="filters-body-inner">
+
+            <!-- Categorías -->
+            <div>
+              <div class="filter-section-title">Categorías</div>
+              {% for category in categories %}
+              <div class="filter-option">
+                <input type="checkbox" id="cat-{{ category.slug }}" name="category"
+                       value="{{ category.slug }}"
+                       {% if category.slug in active_filters.categories %}checked{% endif %} />
+                <label for="cat-{{ category.slug }}">
+                  <span>{{ category.name }}</span>
+                  <span class="filter-count">{{ category.product_count }}</span>
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+
+            <!-- Precio -->
+            <div>
+              <div class="filter-section-title">Precio</div>
+              <div class="price-range-inputs">
+                <input type="number" name="price_min" placeholder="Mín"
+                       value="{{ active_filters.price_min|default:'' }}" min="0" />
+                <span class="price-range-sep">—</span>
+                <input type="number" name="price_max" placeholder="Máx"
+                       value="{{ active_filters.price_max|default:'' }}" min="0" />
+              </div>
+            </div>
+
+            <!-- Disponibilidad -->
+            <div>
+              <div class="filter-section-title">Disponibilidad</div>
+              <div class="filter-option">
+                <input type="checkbox" id="in-stock" name="in_stock" value="1"
+                       {% if active_filters.in_stock %}checked{% endif %} />
+                <label for="in-stock">En stock</label>
+              </div>
+            </div>
+
+            <div class="filters-actions">
+              <button type="submit" class="btn-filter-apply">Aplicar filtros</button>
+              <button type="button" class="btn-filter-reset" id="resetFilters">Limpiar</button>
+            </div>
+
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="products-toolbar">
+      <select class="sort-select" id="sortSelect">
+        <option value="default"{% if active_sort == 'default' %} selected{% endif %}>Ordenar por</option>
+        <option value="price_asc"{% if active_sort == 'price_asc' %} selected{% endif %}>Menor precio</option>
+        <option value="price_desc"{% if active_sort == 'price_desc' %} selected{% endif %}>Mayor precio</option>
+        <option value="newest"{% if active_sort == 'newest' %} selected{% endif %}>Más recientes</option>
+        <option value="name_asc"{% if active_sort == 'name_asc' %} selected{% endif %}>A → Z</option>
+      </select>
+      <div class="view-toggle">
+        <button id="viewGrid" class="active" aria-label="Vista grilla"><i class="bi bi-grid"></i></button>
+        <button id="viewList" aria-label="Vista lista"><i class="bi bi-list-ul"></i></button>
+      </div>
+    </div>
+
+    <!-- GRID DE PRODUCTOS -->
+    <div id="productsGrid">
+      {% for product in products %}
+      <article class="product-card"
+               data-id="{{ product.id }}"
+               data-category="{{ product.category.slug }}"
+               data-has-variants="{{ product.has_variants|yesno:'true,false' }}"
+               data-is-clothing="{{ product.category.name|lower|yesno:'true,false' }}">
+        <div class="product-card-img">
+          {% if product.image %}
+            <img src="{{ product.image.url }}" alt="{{ product.name }}" loading="lazy" />
+          {% else %}
+            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+              <i class="bi bi-image" style="font-size:2rem;color:var(--clr-muted)"></i>
+            </div>
+          {% endif %}
+          {% if product.is_new %}<span class="product-card-badge">Nuevo</span>{% endif %}
+          {% if product.is_on_sale %}<span class="product-card-badge badge-sale">Oferta</span>{% endif %}
+        </div>
+        <div class="product-card-body">
+          <div class="product-card-category">{{ product.category.name }}</div>
+          <div class="product-card-name">{{ product.name }}</div>
+          <div class="product-card-price">
+            {% if product.original_price %}
+              <span class="original">${{ product.original_price }}</span>
+            {% endif %}
+            ${{ product.price }}
+          </div>
+        </div>
+        <div class="product-card-actions">
+         <a href="/api/products/{{ product.id }}/" class="btn-card-detail">Ver detalle</a>
+          {% if product.category.name|lower == 'ropa' or product.has_variants %}
+           <a href="/api/products/{{ product.id }}/" class="btn-card-add">+ Carrito</a>
+          {% else %}
+            <button class="btn-card-add"
+                    data-product-id="{{ product.id }}"
+                    onclick="Cart.addItem({{ product.id }}, null)">
+              + Carrito
+            </button>
+          {% endif %}
+        </div>
+      </article>
+      {% empty %}
+      <div class="no-results">
+        <i class="bi bi-search"></i>
+        <p>No se encontraron productos con los filtros seleccionados.</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Paginación -->
+    {% if page_obj and page_obj.paginator.num_pages > 1 %}
+    <div class="pagination-wrap">
+      {% if page_obj.has_previous %}
+      <button class="page-btn" onclick="goToPage({{ page_obj.previous_page_number }})">
+        <i class="bi bi-chevron-left"></i>
+      </button>
+      {% endif %}
+      {% for num in page_obj.paginator.page_range %}
+      <button class="page-btn {% if page_obj.number == num %}active{% endif %}"
+              onclick="goToPage({{ num }})">{{ num }}</button>
+      {% endfor %}
+      {% if page_obj.has_next %}
+      <button class="page-btn" onclick="goToPage({{ page_obj.next_page_number }})">
+        <i class="bi bi-chevron-right"></i>
+      </button>
+      {% endif %}
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/product-list.js' %}"></script>
+{% endblock %}
