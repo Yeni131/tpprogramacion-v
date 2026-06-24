@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5" style="max-width:720px;">
+  <h1 class="mb-4" style="font-family:var(--font-display); font-weight:500;">Mi Carrito</h1>
+
+  <div id="cart-page-items"></div>
+
+  <div id="cart-page-total"
+       class="d-flex justify-content-between align-items-center mt-4 pt-3"
+       style="border-top:1px solid var(--clr-border); display:none !important;">
+    <span style="font-size:.8rem; letter-spacing:.08em;
+                 text-transform:uppercase; color:var(--clr-muted);">Total</span>
+    <span id="cart-page-total-amount"
+          style="font-family:var(--font-display); font-size:1.75rem; font-weight:500;"></span>
+  </div>
+
+  <button id="checkoutBtn" onclick="checkout()"
+          class="btn-checkout mt-3" style="display:none;">
+    Finalizar compra
+  </button>
+
+  <div id="checkoutFormSection" style="display:none; margin-top:2rem;">
+
+    <h5 style="font-family:var(--font-display); font-weight:500; margin-bottom:1.25rem;">
+      Datos de envío
+    </h5>
+
+    <div class="row g-3 mb-4">
+      <div class="col-6">
+        <input id="co-first-name" class="form-control" placeholder="Nombre">
+      </div>
+      <div class="col-6">
+        <input id="co-last-name" class="form-control" placeholder="Apellido">
+      </div>
+      <div class="col-12">
+        <input id="co-email" type="email" class="form-control" placeholder="Email">
+      </div>
+      <div class="col-6">
+        <input id="co-phone" class="form-control" placeholder="Teléfono">
+      </div>
+      <div class="col-6">
+        <input id="co-city" class="form-control" placeholder="Ciudad">
+      </div>
+      <div class="col-12">
+        <input id="co-address" class="form-control" placeholder="Dirección">
+      </div>
+    </div>
+
+    <h5 style="font-family:var(--font-display); font-weight:500; margin-bottom:1.25rem;">
+      Método de pago
+    </h5>
+
+    <div class="mb-3">
+      <select id="co-payment-method" class="form-select" onchange="togglePaymentFields()">
+        <option value="bank_transfer">Transferencia bancaria</option>
+        <option value="cash">Efectivo</option>
+      </select>
+    </div>
+
+    <div id="fields-bank-transfer" class="row g-3 mb-4">
+      <div class="col-12">
+        <input id="co-bank" class="form-control" placeholder="Banco">
+      </div>
+      <div class="col-6">
+        <input id="co-reference" class="form-control" placeholder="Número de referencia">
+      </div>
+      <div class="col-6">
+        <input id="co-transfer-date" type="date" class="form-control">
+      </div>
+    </div>
+
+    <div id="fields-cash" class="row g-3 mb-4" style="display:none;">
+      <div class="col-6">
+        <input id="co-amount-received" type="number" step="0.01"
+               class="form-control" placeholder="Monto recibido">
+      </div>
+      <div class="col-12">
+        <textarea id="co-observations" class="form-control" rows="2"
+                  placeholder="Observaciones (opcional)"></textarea>
+      </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-2">
+      <button class="btn-checkout w-100" onclick="handleCheckoutSubmit()">
+        Confirmar pedido
+      </button>
+      <button class="btn btn-outline-secondary" onclick="cancelCheckout()">
+        Volver
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div id="authModal"
+     style="display:none; padding:20px; border:1px solid var(--clr-border);
+            border-radius:var(--radius); max-width:360px;
+            margin:1.5rem auto; background:var(--clr-surface);">
+  <h3 style="font-family:var(--font-display); margin-bottom:1rem;">Iniciar sesión</h3>
+  <input id="auth-username" placeholder="Usuario" class="form-control mb-2">
+  <input id="auth-password" type="password" placeholder="Contraseña" class="form-control mb-3">
+  <button onclick="login()"    class="btn-checkout mb-2 w-100">Iniciar sesión</button>
+  <button onclick="register()" class="btn-checkout w-100"
+          style="background:var(--clr-muted);">Registrarse</button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/cart-page.js' %}"></script>
+{% endblock %}
