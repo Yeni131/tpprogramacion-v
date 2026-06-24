@@ -1,19 +1,175 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>{% block title %}E-commerce{% endblock %}</title>
-</head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}MYA{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  {% block extra_css %}{% endblock %}
+  <link rel="stylesheet" href="{% static 'css/main.css' %}" />
 <body>
 
-{% include "components/navbar.html" %}
+{# ── Expone estado de sesión Django a JavaScript ── #}
+<script>
+  window.MYA_USER = {
+    isAuthenticated: {{ request.user.is_authenticated|yesno:"true,false" }},
+    firstName:       "{{ request.user.first_name|escapejs }}",
+    lastName:        "{{ request.user.last_name|escapejs }}",
+    email:           "{{ request.user.email|escapejs }}",
+    initials:        "{{ request.user.first_name|slice:'1'|upper }}{{ request.user.last_name|slice:'1'|upper }}",
+  };
+  {# Retrocompatibilidad #}
+  window.USER_IS_AUTHENTICATED = window.MYA_USER.isAuthenticated;
+</script>
 
-<div style="padding:20px;">
-    {% block content %}
-    {% endblock %}
-</div>
+<!-- ═══════════════════════════════════════════
+     NAVBAR
+══════════════════════════════════════════════ -->
+<nav class="mya-nav">
+  <div class="container-xl px-3 px-md-4">
+    <a href="{% url 'home' %}" class="mya-logo">MYA</a>
 
-{% include "components/footer.html" %}
+    <ul class="nav-links">
+      <li><a href="{% url 'home' %}">Inicio</a></li>
+      <li><a href="{% url 'product_list' %}">Productos</a></li>
+      <li><a href="{% url 'offers' %}">Ofertas y Cupones</a></li>
+      <li><a href="#">Contacto</a></li>
+    </ul>
+
+    <div class="nav-actions">
+      <button class="btn-icon" aria-label="Buscar"><i class="bi bi-search"></i></button>
+      <button class="btn-icon" id="cartToggleBtn" aria-label="Carrito">
+        <i class="bi bi-bag"></i>
+        <span class="cart-badge" id="cartBadge" data-count="0">0</span>
+      </button>
+
+      {# ── USUARIO NO AUTENTICADO ── #}
+      {% if not request.user.is_authenticated %}
+        <a href="{% url 'login' %}" class="btn-user-login" aria-label="Iniciar sesión">
+          <i class="bi bi-person"></i>
+          <span>Iniciar sesión</span>
+        </a>
+
+      {# ── USUARIO AUTENTICADO ── #}
+      {% else %}
+        <div class="user-menu-wrap" id="userMenuWrap">
+          <button class="btn-user-menu" id="userMenuBtn" aria-haspopup="true" aria-expanded="false">
+            <span class="user-avatar" aria-hidden="true">
+              {% if request.user.first_name %}
+                {{ request.user.first_name|slice:"1"|upper }}{% if request.user.last_name %}{{ request.user.last_name|slice:"1"|upper }}{% endif %}
+              {% else %}
+                <i class="bi bi-person-fill" style="font-size:.9rem"></i>
+              {% endif %}
+            </span>
+            <span class="user-name">
+              {% if request.user.first_name %}
+                {{ request.user.first_name }}
+              {% else %}
+                {{ request.user.email }}
+              {% endif %}
+            </span>
+            <i class="bi bi-chevron-down user-chevron"></i>
+          </button>
+
+          {# Dropdown #}
+          <div class="user-dropdown" id="userDropdown" role="menu">
+            <div class="user-dropdown-header">
+              <strong>
+                {% if request.user.first_name %}
+                  {{ request.user.first_name }} {{ request.user.last_name }}
+                {% else %}
+                  {{ request.user.email }}
+                {% endif %}
+              </strong>
+              {{ request.user.email }}
+            </div>
+
+            <a href="{% url 'my-account' %}" role="menuitem">
+              <i class="bi bi-person"></i> Mi Cuenta
+            </a>
+            <a href="{% url 'my-orders' %}" role="menuitem">
+              <i class="bi bi-bag-check"></i> Mis Pedidos
+            </a>
+
+            <div class="dropdown-divider"></div>
+
+            <button class="dropdown-item-btn dropdown-item-logout"
+                    role="menuitem"
+                    onclick="myaLogout()">
+              <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+            </button>
+          </div>
+        </div>
+      {% endif %}
+
+    </div>{# /nav-actions #}
+  </div>
+</nav>
+
+<!-- OVERLAY + DRAWER -->
+<div class="cart-overlay" id="cartOverlay"></div>
+
+<aside class="cart-drawer" id="cartDrawer" aria-label="Carrito de compras">
+  <div class="cart-drawer-header">
+    <h2>Tu carrito</h2>
+    <button class="btn-close-cart" id="cartCloseBtn" aria-label="Cerrar">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <div class="cart-items-list" id="cartItemsList">
+    <div class="cart-empty" id="cartEmpty">
+      <i class="bi bi-bag"></i>
+      <p>Tu carrito está vacío</p>
+    </div>
+  </div>
+
+  <div class="cart-drawer-footer" id="cartFooter" style="display:none">
+    <div class="cart-total-row">
+      <span class="cart-total-label">Total</span>
+      <span class="cart-total-amount" id="cartTotal">$0</span>
+    </div>
+    <a href="/checkout/" class="btn-checkout">Finalizar compra</a>
+    <div class="cart-timer-bar">
+      <div class="cart-timer-progress" id="cartTimerBar"></div>
+    </div>
+  </div>
+</aside>
+
+<!-- TOAST -->
+<div class="mya-toast" id="myaToast"></div>
+
+<!-- MAIN -->
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container-xl px-3 px-md-4">
+    <div class="footer-logo">MYA</div>
+    <ul class="footer-links">
+      <li><a href="#">Sobre nosotros</a></li>
+      <li><a href="#">Términos y condiciones</a></li>
+      <li><a href="#">Política de privacidad</a></li>
+      <li><a href="#">Devoluciones</a></li>
+      <li><a href="#">Contacto</a></li>
+    </ul>
+    <p class="footer-copy">&copy; {% now "Y" %} MYA. Todos los derechos reservados.</p>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+{# ── Scripts globales de la app (presentes en TODAS las páginas) ── #}
+{% load static %}
+<script src="{% static 'js/navbar.js' %}"></script>
+<script src="{% static 'js/cart.js' %}"></script>
+
+{% block extra_js %}{% endblock %}
 
 </body>
 </html>
