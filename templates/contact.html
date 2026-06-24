@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="contact-page">
+    <div class="contact-container">
+
+        <div class="contact-header">
+            <h1>Contacto</h1>
+            <p>
+                Estamos disponibles para ayudarte con cualquier consulta 
+                sobre productos, pedidos y envíos.
+            </p>
+        </div>
+
+        <div class="contact-grid">
+
+            <div class="contact-info">
+                <h2>Información</h2>
+
+                <div class="info-item">
+                    <i class="bi bi-geo-alt"></i>
+                    <p>Asunción, Paraguay</p>
+                </div>
+
+                <div class="info-item">
+                    <i class="bi bi-truck"></i>
+                    <p>Envíos a Gran Asunción y todo el país</p>
+                </div>
+
+                <div class="info-item">
+                    <i class="bi bi-telephone"></i>
+                    <p>+595 981 456 789</p>
+                </div>
+
+                <div class="info-item">
+                    <i class="bi bi-envelope"></i>
+                    <p>contacto@mya.com.py</p>
+                </div>
+
+                <div class="info-item">
+                    <i class="bi bi-clock"></i>
+                    <p>Lunes a Sábado · 08:00 - 20:00</p>
+                </div>
+            </div>
+
+            <div class="contact-form-box">
+                <h2>Escribinos</h2>
+
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    <input type="text" name="name" placeholder="Tu nombre" required>
+                    <input type="email" name="email" placeholder="Tu correo electrónico" required>
+                    <textarea name="message" rows="6" placeholder="Escribí tu mensaje..." required></textarea>
+
+                    <button type="submit">Enviar mensaje</button>
+                </form>
+            </div>
+
+        </div>
+
+    </div>
+</section>
+{% endblock %}
