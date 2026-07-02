@@ -55,7 +55,14 @@ const Cart = (() => {
       });
       if (!res.ok) throw new Error(await res.text());
 
-      applyResponse(await res.json());
+      const data = await res.json();
+      applyResponse(data);
+
+      // Guardar en localStorage para restaurar si el usuario aún no está logueado
+      if (data.items && data.items.length > 0) {
+        localStorage.setItem('mya_pending_cart', JSON.stringify(data.items));
+      }
+
       render();
       openDrawer();
       showToast('Producto agregado al carrito');
@@ -205,6 +212,46 @@ const Cart = (() => {
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+ async function restorePendingCart() {
+    const pending = localStorage.getItem('mya_pending_cart');
+    if (!pending) return;
+
+    // Solo restaurar si el usuario está autenticado
+    if (!window.MYA_USER?.isAuthenticated) return;
+
+    // Solo restaurar UNA vez: si ya restauramos en esta sesión, no repetir
+    if (sessionStorage.getItem('mya_cart_restored')) {
+      localStorage.removeItem('mya_pending_cart');
+      return;
+    }
+
+    try {
+      const items = JSON.parse(pending);
+      if (!items || !items.length) return;
+
+      for (const item of items) {
+        const productId = item.product?.id;
+        const variantId = item.variant?.id ?? null;
+        const qty       = item.quantity ?? 1;
+        if (!productId) continue;
+
+        const body = { product_id: productId, quantity: qty };
+        if (variantId) body.variant_id = variantId;
+
+        await fetch('/api/cart/add/', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF() },
+          body:    JSON.stringify(body),
+        });
+      }
+ localStorage.removeItem('mya_pending_cart');
+      sessionStorage.setItem('mya_cart_restored', '1');
+    } catch (e) {
+      console.warn('restorePendingCart:', e);
+      localStorage.removeItem('mya_pending_cart');
+    }
+  }
+
   function init() {
     const toggleBtn = document.getElementById('cartToggleBtn');
     const closeBtn  = document.getElementById('cartCloseBtn');
@@ -220,7 +267,8 @@ const Cart = (() => {
         if (drawerOpen) startTimer();
       });
     }
-    fetchCart();
+    // Si hay carrito pendiente de sesión anónima, restaurarlo primero
+    restorePendingCart().then(() => fetchCart());
   }
 
   return { init, addItem, fetchCart, updateItem, showToast, formatPrice, getState: () => ({ ...state }) };
