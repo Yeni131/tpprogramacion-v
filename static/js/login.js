@@ -49,8 +49,19 @@
       }
 
       // Redirigir al checkout (o al 'next' si viene de @login_required)
+      // Guardar carrito anónimo en localStorage antes de redirigir
+      try {
+        const cartRes = await fetch('/api/cart/', { credentials: 'include' });
+        if (cartRes.ok) {
+          const cartData = await cartRes.json();
+          if (cartData.items && cartData.items.length > 0) {
+            localStorage.setItem('mya_pending_cart', JSON.stringify(cartData.items));
+          }
+        }
+      } catch (e) { /* silencioso */ }
+
       const params = new URLSearchParams(window.location.search);
-      window.location.href = params.get('next') || '/checkout/';
+      window.location.href = params.get('next') || '/api/products/';
 
     } catch (e) {
       errEl.textContent   = 'Error de conexión. Intentá de nuevo.';
