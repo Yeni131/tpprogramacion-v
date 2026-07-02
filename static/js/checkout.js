@@ -406,7 +406,7 @@
       }
 
       // Éxito → guardamos el order_id para poder ofrecer la descarga de factura
-      window.location.href = "/orden-confirmada/" + (data.order_id || "");
+      window.location.href = "/api/orden-confirmada/" + (data.order_id || "");
 
     } catch (err) {
       console.error(err);
